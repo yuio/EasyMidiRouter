@@ -118,6 +118,9 @@ void enumMidiDevices( bool inputs, DeviceInformationCollection& devices, bool du
 
 int main(int argc, wchar_t* argv[])
 {
+
+    std::wcout.setf(std::ios::unitbuf);
+
     init_apartment();
 
     // Enum MIDI Devices
@@ -249,7 +252,7 @@ int main(int argc, wchar_t* argv[])
         inputWatcher.Start();
 
         // Instructions
-        std::cout << "\n";
+        std::wcout << "\n";
         std::wcout << L"Initializing...";
         std::wcout << L"(Press CTRL+Q to exit)\n";
 
@@ -303,13 +306,13 @@ int main(int argc, wchar_t* argv[])
                         while (reader.UnconsumedBufferLength() > 0) 
                         {
                             uint8_t b = reader.ReadByte();
-                            std::cout << (b<=0xf?"0":"") << std::hex << static_cast<int>(b) << " ";
+                            std::wcout << (b<=0xf?L"0":L"") << std::hex << static_cast<int>(b) << L" ";
 
                             static size_t line_output_count = 0;
                             line_output_count++;
                             if (line_output_count>=36)
                             {
-                                std::cout << "\n";
+                                std::wcout << L"\n";
                                 line_output_count=0;
                             }
                         }
@@ -326,7 +329,7 @@ int main(int argc, wchar_t* argv[])
             // Reconection check
             if ( reconnecting && outputValid && inputValid )
             {
-                std::cout << "\n";
+                std::wcout << L"\n";
                 std::wcout << L"Routing messages from '"<<input.Name().c_str()<<"' to '"<<output.Name().c_str()<<"'";
                 std::wcout << L"(Press CTRL+Q to exit)\n";
             }
