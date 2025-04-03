@@ -116,9 +116,8 @@ void enumMidiDevices( bool inputs, DeviceInformationCollection& devices, bool du
 
 //--------------------------------------------------------------------------------------------------------------------------
 
-int main(int argc, wchar_t* argv[])
+int wmain(int argc, wchar_t* argv[])
 {
-
     std::wcout.setf(std::ios::unitbuf);
 
     init_apartment();

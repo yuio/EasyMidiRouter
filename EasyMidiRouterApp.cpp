@@ -10,7 +10,7 @@
 
 //--------------------------------------------------------------------------------------------------------------------------
 
-extern int main(int argc, wchar_t* argv[]);
+extern int wmain(int argc, wchar_t* argv[]);
 
 //--------------------------------------------------------------------------------------------------------------------------
 
@@ -73,7 +73,7 @@ void GuiRedirectThread()
 
     int argc = __argc;
     wchar_t** argv = __wargv;
-    main(argc, argv);
+    wmain(argc, argv);
 
     std::wcout.rdbuf(oldCoutBuf);
     std::wcerr.rdbuf(oldCerrBuf);
