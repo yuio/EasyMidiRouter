@@ -6,19 +6,20 @@
 #include <sstream>
 #include <streambuf>
 #include <mutex>
-#include "resource.h" // Asegúrate de que define IDI_ICON1
+#include "resource.h"
 
-extern int main(int argc, wchar_t* argv[]); // Declaración del main real
+extern int main(int argc, wchar_t* argv[]);
 
 HWND g_hEdit = nullptr;
 HFONT g_hFont = nullptr;
 HANDLE g_hThread = nullptr;
 std::mutex g_outputMutex;
+const size_t g_maxChars=4000;
 
 class EditStreamBuf : public std::wstreambuf {
 protected:
     std::wstring buffer;
-    const size_t flushThreshold = 64; // Flush cada 64 caracteres
+    const size_t flushThreshold = 64;
 
     int_type overflow(int_type ch) override {
         if (ch != EOF) {
@@ -35,9 +36,17 @@ protected:
         return 0;
     }
 
-    void flush() {
-        if (buffer.empty() || !g_hEdit) return;
-        std::lock_guard<std::mutex> lock(g_outputMutex);
+    void flush() 
+    {
+       if (buffer.empty() || !g_hEdit) return;
+
+       std::lock_guard<std::mutex> lock(g_outputMutex);
+
+       LRESULT textLength = SendMessageW(g_hEdit, WM_GETTEXTLENGTH, 0, 0);
+       if (textLength > g_maxChars) {
+           SendMessageW(g_hEdit, WM_SETTEXT, 0, (LPARAM)L"");
+       }
+
         SendMessageW(g_hEdit, EM_SETSEL, -1, -1);
         SendMessageW(g_hEdit, EM_REPLACESEL, FALSE, (LPARAM)buffer.c_str());
         buffer.clear();
@@ -54,7 +63,7 @@ void GuiRedirectThread() {
     wchar_t** argv = __wargv;
     main(argc, argv);
 
-    std::wcout.rdbuf(oldCoutBuf); // restaurar al final
+    std::wcout.rdbuf(oldCoutBuf);
     std::wcerr.rdbuf(oldCerrBuf);
 }
 

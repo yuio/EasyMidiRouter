@@ -233,9 +233,13 @@ int main(int argc, wchar_t* argv[])
         DeviceWatcher outputWatcher = DeviceInformation::CreateWatcher(MidiOutPort::GetDeviceSelector());
         outputWatcher.Removed([&](DeviceWatcher const&, DeviceInformationUpdate const& info) 
         {
-            if (info.Id() == output.Id()) {
-                outputValid = false;
-                std::wcout << L"\nMIDI OUTPUT disconnected.\n";
+            if (outputValid)
+            {
+                if (info.Id() == output.Id())
+                {
+                    outputValid = false;
+                    std::wcout << L"\nMIDI OUTPUT disconnected.\n";
+                }
             }
         });
         outputWatcher.Start();
@@ -243,9 +247,13 @@ int main(int argc, wchar_t* argv[])
         // Prepare input watcher
         DeviceWatcher inputWatcher = DeviceInformation::CreateWatcher(MidiInPort::GetDeviceSelector());
         inputWatcher.Removed([&](DeviceWatcher const&, DeviceInformationUpdate const& info) {
-            if (info.Id() == input.Id()) {
-                inputValid = false;
-                std::wcout << L"\nMIDI INPUT disconnected.\n";
+            if (inputValid)
+            {
+                if (info.Id() == input.Id()) 
+                {
+                    inputValid = false;
+                    std::wcout << L"\nMIDI INPUT disconnected.\n";
+                }
             }
         });
 
