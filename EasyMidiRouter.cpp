@@ -5,6 +5,7 @@
 #include <winrt/Windows.Storage.Streams.h>
 #include <winrt/base.h>
 
+#include <windows.h>
 #include <conio.h>
 #include <iostream>
 #include <fstream>
@@ -19,8 +20,12 @@ using namespace Windows::Storage::Streams;
 
 int getIndexFromString(const std::wstring& str) 
 {
-    bool all_digits = std::all_of(str.begin(), str.end(), [](wchar_t c) { return std::isdigit(c); });
-    return (all_digits&&str.size()) ? std::stoi(str) : 0;
+    bool all_digits = std::all_of(str.begin(), str.end(), 
+                                  [](wchar_t c) 
+                                    { 
+                                        return std::isdigit(c); 
+                                    });
+    return (all_digits&&str.size()) ? std::stoi(str) : -1;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -31,11 +36,32 @@ int getDeviceIndexFromString(DeviceInformationCollection& devices, const std::ws
     for (uint32_t i = 0; i < deviceCount; ++i) 
     {
         DeviceInformation device = devices.GetAt(i);
-        if (wcsstr(device.Name().c_str(), substring.c_str())!=0) 
+        std::wstring deviceName = device.Name().c_str();
+        if ( deviceName.find(substring)!=std::string::npos) 
             return i;
     }
 
     return -1;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
+
+void trim_spaces (std::wstring& str)
+{
+    size_t start = 0;
+    while (start < str.size() && std::isspace(str[start])) 
+        ++start;
+
+    if (start == str.size()) {
+        str.clear();
+        return;
+    }
+
+    size_t end = str.size() - 1;
+    while (end > start && std::isspace(str[end]))
+        --end;
+
+    str = str.substr(start, end - start + 1);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -57,28 +83,33 @@ bool loadArgsFile ( const std::wstring& argsFileName, std::wstring& inputName, s
         return false;
     }
 
-    return true;}
+    // Trim spaces
+    trim_spaces(inputName);
+    trim_spaces(outputName);
+
+    return true;
+}
 
 //--------------------------------------------------------------------------------------------------------------------------
 
-void enum_devices( bool inputs, DeviceInformationCollection& devices ) 
-{
-    std::wcout << L"\n";
-    std::wcout << L"-----Midi "<<(inputs?"input":"outputs")<<" devices-----\n";
+void enumMidiDevices( bool inputs, DeviceInformationCollection& devices, bool dumpInfo=true ) 
+{    
+    if (dumpInfo) std::wcout << L"\n";
+    if (dumpInfo) std::wcout << L"-----Midi "<<(inputs?"input":"outputs")<<" devices-----\n";
 
     Windows::Foundation::IAsyncOperation<DeviceInformationCollection> devicesOp = DeviceInformation::FindAllAsync(inputs?MidiInPort::GetDeviceSelector():MidiOutPort::GetDeviceSelector());
     devices = devicesOp.get();
     uint32_t deviceCount = devices.Size();
     if (deviceCount == 0) 
     {
-        std::wcout << L"    No MIDI devices found.\n";
+        if (dumpInfo) std::wcout << L"No MIDI devices found.\n";
     } 
     else 
     {
         for (uint32_t i = 0; i < deviceCount; ++i) 
         {
             DeviceInformation device = devices.GetAt(i);
-            std::wcout << L"    [" << i << L"] '" << device.Name().c_str() << L"'" << std::endl;
+            if (dumpInfo) std::wcout << L"    [" << i << L"] '" << device.Name().c_str() << L"'" << std::endl;
         }
     }
 }
@@ -91,9 +122,9 @@ int main(int argc, wchar_t* argv[])
 
     // Enum MIDI Devices
     DeviceInformationCollection inputs = nullptr;
-    enum_devices( true, inputs  );
     DeviceInformationCollection outputs = nullptr;
-    enum_devices( false, outputs );
+    enumMidiDevices( true, inputs  );
+    enumMidiDevices( false, outputs );
     std::wcout << L"\n";
 
     // Get params
@@ -163,37 +194,6 @@ int main(int argc, wchar_t* argv[])
         }
     }
 
-    // Names to devices
-    DeviceInformation input  = nullptr;
-    DeviceInformation output = nullptr;
-    if (!args_error)
-    {
-        int inputIndex  = getDeviceIndexFromString(inputs, inputName);
-        if (inputIndex>=0)
-        {
-            std::wcout << L"INFO: Input found. ["<<inputIndex<<"] '"<<inputName<<L"'.\n";
-            input=inputs.GetAt(inputIndex);
-        }
-        else 
-        {
-            std::wcout << L"INFO: Input '"<<inputName<<L"' not found.\n";
-            args_error=true;
-        }
-
-
-        int outputIndex = getDeviceIndexFromString(outputs, outputName);
-        if (outputIndex>=0)
-        {
-            std::wcout << L"INFO: Output found. ["<<outputIndex<<"] '"<<outputName<<L"'.\n";
-            output=outputs.GetAt(outputIndex);
-        }
-        else 
-        {
-            std::wcout << L"INFO: Output '"<<outputName<<L"' not found.\n";
-            args_error=true;
-        }
-    }
-
     // Dump usage and exit if necessary
     if (args_error) 
     {
@@ -211,50 +211,139 @@ int main(int argc, wchar_t* argv[])
         return 0;
     }
 
-    // Execute routing
-    if (input)
+    // Initialization and loop
     {
-        auto portOp = MidiOutPort::FromIdAsync(output.Id());
-        auto outPort = portOp.get();
+        // Main vars
+        std::atomic<bool> outputValid{ false };
+        DeviceInformation output = nullptr;
+        uint64_t outputConnectionTryTime = 0;
+        Windows::Devices::Midi::IMidiOutPort outPort = nullptr;        
+        Windows::Foundation::IAsyncOperation<Windows::Devices::Midi::IMidiOutPort> outPortOp = nullptr;
 
-        Windows::Foundation::IAsyncOperation<MidiInPort> inPortOp = MidiInPort::FromIdAsync(input.Id());
-        MidiInPort inPort = inPortOp.get();
-        inPort.MessageReceived([outPort](IMidiInPort const&, MidiMessageReceivedEventArgs const& args) 
+        std::atomic<bool> inputValid { false };
+        DeviceInformation input  = nullptr;
+        uint64_t inputConnectionTryTime = 0;
+        Windows::Devices::Midi::MidiInPort inPort = nullptr;
+        Windows::Foundation::IAsyncOperation<Windows::Devices::Midi::MidiInPort>inPortOp = nullptr;
+
+        // Prepare output watcher
+        DeviceWatcher outputWatcher = DeviceInformation::CreateWatcher(MidiOutPort::GetDeviceSelector());
+        outputWatcher.Removed([&](DeviceWatcher const&, DeviceInformationUpdate const& info) 
         {
-            IBuffer raw = args.Message().RawData();
-            if (outPort)
-                outPort.SendBuffer(raw);
-                
-            DataReader reader = DataReader::FromBuffer(raw);
-            while (reader.UnconsumedBufferLength() > 0) 
-            {
-                uint8_t b = reader.ReadByte();
-                std::cout << (b<=0xf?"0":"") << std::hex << static_cast<int>(b) << " ";
+            if (info.Id() == output.Id()) {
+                outputValid = false;
+                std::wcout << L"\nMIDI OUTPUT disconnected.\n";
+            }
+        });
+        outputWatcher.Start();
 
-                static size_t line_output_count = 0;
-                line_output_count++;
-                if (line_output_count>=36)
-                {
-                    std::cout << "\n";
-                    line_output_count=0;
-                }
+        // Prepare input watcher
+        DeviceWatcher inputWatcher = DeviceInformation::CreateWatcher(MidiInPort::GetDeviceSelector());
+        inputWatcher.Removed([&](DeviceWatcher const&, DeviceInformationUpdate const& info) {
+            if (info.Id() == input.Id()) {
+                inputValid = false;
+                std::wcout << L"\nMIDI INPUT disconnected.\n";
             }
         });
 
+        inputWatcher.Start();
+
+        // Instructions
         std::cout << "\n";
-        std::wcout << L"Routing messages from '"<<input.Name().c_str()<<"' to '"<<output.Name().c_str()<<"'";
+        std::wcout << L"Initializing...";
         std::wcout << L"(Press CTRL+Q to exit)\n";
-        while (true) {
+
+        // Loop
+        while (true) 
+        {
+            const int reconnectionInterval = 1000;
+            bool reconnecting = (!outputValid || !inputValid );
+    
+            // reconnect output
+            if ( !outputValid && (GetTickCount64()-outputConnectionTryTime)>reconnectionInterval )
+            {
+                outputConnectionTryTime = GetTickCount64(); 
+                enumMidiDevices( false, outputs, false );
+                int outputIndex = getDeviceIndexFromString(outputs, outputName);
+                if (outputIndex>=0)
+                {
+                    std::wcout << L"INFO: Output found. ["<<outputIndex<<"] '"<<outputName<<L"'.\n";
+                    output=outputs.GetAt(outputIndex);
+                    outPortOp = MidiOutPort::FromIdAsync(output.Id());
+                    outPort = outPortOp.get();
+                    outputValid = true;
+                }
+                else 
+                {
+                    std::wcout << L"INFO: Output '"<<outputName<<L"' not found.\n";
+                    args_error=true;
+                }
+            }   
+
+            // reconnect input
+            if ( !inputValid && (GetTickCount64()-inputConnectionTryTime)>reconnectionInterval )
+            {
+                inputConnectionTryTime = GetTickCount64(); 
+                enumMidiDevices( true, inputs, false );
+                int inputIndex = getDeviceIndexFromString(inputs, inputName);
+                if (inputIndex>=0)
+                {
+                    std::wcout << L"INFO: Input found. ["<<inputIndex<<"] '"<<inputName<<L"'.\n";
+                    input=inputs.GetAt(inputIndex);
+                    inPortOp = MidiInPort::FromIdAsync(input.Id());
+                    inPort = inPortOp.get();
+                    inputValid = true;
+                    inPort.MessageReceived([&](IMidiInPort const&, MidiMessageReceivedEventArgs const& args) 
+                    {
+                        IBuffer raw = args.Message().RawData();
+                        if (outputValid && outPort)
+                            outPort.SendBuffer(raw);
+                
+                        DataReader reader = DataReader::FromBuffer(raw);
+                        while (reader.UnconsumedBufferLength() > 0) 
+                        {
+                            uint8_t b = reader.ReadByte();
+                            std::cout << (b<=0xf?"0":"") << std::hex << static_cast<int>(b) << " ";
+
+                            static size_t line_output_count = 0;
+                            line_output_count++;
+                            if (line_output_count>=36)
+                            {
+                                std::cout << "\n";
+                                line_output_count=0;
+                            }
+                        }
+                    });
+
+                }
+                else 
+                {
+                    std::wcout << L"INFO: Input '"<<inputName<<L"' not found.\n";
+                    args_error=true;
+                }
+            }   
+
+            // Reconection check
+            if ( reconnecting && outputValid && inputValid )
+            {
+                std::cout << "\n";
+                std::wcout << L"Routing messages from '"<<input.Name().c_str()<<"' to '"<<output.Name().c_str()<<"'";
+                std::wcout << L"(Press CTRL+Q to exit)\n";
+            }
+
+            // Exit key check
             if (_kbhit()) {
                 int ch = _getch();
                 if (ch == 17) {
                     break;
                 }
+            } else {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         }
-
-        std::wcout << L"Exiting...\n";
     }
+
+    std::wcout << L"Exiting...\n";
 
     return 0;
 }
