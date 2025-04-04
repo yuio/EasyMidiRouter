@@ -122,14 +122,14 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
 
     init_apartment();
 
-    // Enum MIDI Devices
+    // Enumerate MIDI devices
     DeviceInformationCollection inputs = nullptr;
     DeviceInformationCollection outputs = nullptr;
     enumMidiDevices( true, inputs  );
     enumMidiDevices( false, outputs );
     std::wcout << L"\n";
 
-    // Get params
+    // Parse input arguments
     std::wstring argsFile  = L"";
     std::wstring inputName  = L"";
     std::wstring outputName = L"";
@@ -158,9 +158,9 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
     // Read args file
     if (!argsFile.empty()) 
     {
-        std::wcout << L"INFO: loading:"<<argsFile<<".\n";
+        std::wcout << L"INFO: arguments from:"<<argsFile<<".\n";
         if ( loadArgsFile ( argsFile, inputName, outputName ) )
-            std::wcout << L"INFO: Got Args from file. Input='"<<inputName<<L"' Output='"<<outputName<<L"'.\n";
+            std::wcout << L"INFO: Arguments loaded from file. Input='"<<inputName<<L"' Output='"<<outputName<<L"'.\n";
         else
         {
             std::wcout << L"INFO: Unable to get args from file.'.\n";
@@ -168,7 +168,7 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
         }
     }
 
-    // Indexes to names
+    // Convert indexes to device names
     if (!args_error)
     {
         int inputIndex = getIndexFromString(inputName);
@@ -196,7 +196,7 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
         }
     }
 
-    // Dump usage and exit if necessary
+    // Display usage instructions and exit if needed
     if (args_error) 
     {
         std::wcout << L"\n";
@@ -215,7 +215,7 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
 
     // Initialization and loop
     {
-        // Main vars
+        // Main variables
         std::atomic<bool> outputValid{ false };
         DeviceInformation output = nullptr;
         uint64_t outputConnectionTryTime = 0;
@@ -258,12 +258,12 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
 
         inputWatcher.Start();
 
-        // Instructions
+        // Display initialization message
         std::wcout << "\n";
         std::wcout << L"Initializing...";
         std::wcout << L"(Press CTRL+Q to exit)\n";
 
-        // Loop
+        // Main Loop
         while (true) 
         {
             const int reconnectionInterval = 1000;
