@@ -146,11 +146,12 @@
     <Image Include="EasyMidiRouter.ico" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EasyMidiRouter.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="EasyMidiRouter.cpp" />
     <ClCompile Include="EasyMidiRouterApp.cpp" />
-    <ClCompile Include="EasyMidiRouterCmd.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

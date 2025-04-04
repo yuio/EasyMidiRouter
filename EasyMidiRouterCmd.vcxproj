@@ -23,6 +23,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="EasyMidiRouter.cpp" />
     <ClCompile Include="EasyMidiRouterCmd.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

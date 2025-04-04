@@ -8,10 +8,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
+    <ClInclude Include="EasyMidiRouter.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EasyMidiRouterApp.cpp" />
-    <ClCompile Include="EasyMidiRouterCmd.cpp" />
+    <ClCompile Include="EasyMidiRouter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -7,10 +7,7 @@
 #include <streambuf>
 #include <mutex>
 #include "resource.h"
-
-//--------------------------------------------------------------------------------------------------------------------------
-
-extern int wmain(int argc, wchar_t* argv[]);
+#include "EasyMidiRouter.h"
 
 //--------------------------------------------------------------------------------------------------------------------------
 
@@ -73,7 +70,7 @@ void GuiRedirectThread()
 
     int argc = __argc;
     wchar_t** argv = __wargv;
-    wmain(argc, argv);
+    EasyMidiRouterMain(argc, argv);
 
     std::wcout.rdbuf(oldCoutBuf);
     std::wcerr.rdbuf(oldCerrBuf);

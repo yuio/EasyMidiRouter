@@ -5,5 +5,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EasyMidiRouterCmd.cpp" />
+    <ClCompile Include="EasyMidiRouter.cpp" />
   </ItemGroup>
 </Project>
