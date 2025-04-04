@@ -163,7 +163,7 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
             std::wcout << L"INFO: Arguments loaded from file. Input='"<<inputName<<L"' Output='"<<outputName<<L"'.\n";
         else
         {
-            std::wcout << L"INFO: Unable to get args from file.'.\n";
+            std::wcout << L"INFO: Failed to load arguments from file.'.\n";
             args_error=true;
         }
     }
@@ -178,7 +178,7 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
                 inputName=inputs.GetAt(inputIndex).Name();
             else
             {
-                std::wcerr << L"ERROR: Input index bigger than input devices number.\n";
+                std::wcerr << L"ERROR: Input index exceeds available input devices number.\n";
                 args_error=true;
             }
         }
@@ -190,7 +190,7 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
                 outputName=outputs.GetAt(outputIndex).Name();
             else
             {
-                std::wcerr << L"ERROR: Output index bigger than output devices number.\n";
+                std::wcerr << L"ERROR: Output index exceeds available output devices number.\n";
                 args_error=true;
             }
         }
@@ -203,8 +203,8 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
         std::wcout << L"----- Usage.\n";
         std::wcout << L"    EasyMidiRouter.exe                       - try to execute EasyMidiRouter.args.\n";
         std::wcout << L"    EasyMidiRouter.exe <file.args>           - execute specified <file.args>.\n";
-        std::wcout << L"    EasyMidiRouter.exe <midi_src>            - midi src messages debug\n";
-        std::wcout << L"    EasyMidiRouter.exe <midi_src> <midi_dst> - route midi src messages to dst\n";
+        std::wcout << L"    EasyMidiRouter.exe <midi_src>            - debug MIDI source messages\n";
+        std::wcout << L"    EasyMidiRouter.exe <midi_src> <midi_dst> - route MIDI source messages to destination\n";
         std::wcout << L"";
         std::wcout << L"    Notes:\n";
         std::wcout << L"        <midi_src/midi_dst>                  - could be index number, full name or name part\n";
@@ -277,7 +277,7 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
                 int outputIndex = getDeviceIndexFromString(outputs, outputName);
                 if (outputIndex>=0)
                 {
-                    std::wcout << L"INFO: Output found. ["<<outputIndex<<"] '"<<outputName<<L"'.\n";
+                    std::wcout << L"INFO: Output device found. ["<<outputIndex<<"] '"<<outputName<<L"'.\n";
                     output=outputs.GetAt(outputIndex);
                     outPortOp = MidiOutPort::FromIdAsync(output.Id());
                     outPort = outPortOp.get();
@@ -285,7 +285,7 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
                 }
                 else 
                 {
-                    std::wcout << L"INFO: Output '"<<outputName<<L"' not found.\n";
+                    std::wcout << L"INFO: Output device '"<<outputName<<L"' not found.\n";
                     args_error=true;
                 }
             }   
@@ -298,7 +298,7 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
                 int inputIndex = getDeviceIndexFromString(inputs, inputName);
                 if (inputIndex>=0)
                 {
-                    std::wcout << L"INFO: Input found. ["<<inputIndex<<"] '"<<inputName<<L"'.\n";
+                    std::wcout << L"INFO: Input device found. ["<<inputIndex<<"] '"<<inputName<<L"'.\n";
                     input=inputs.GetAt(inputIndex);
                     inPortOp = MidiInPort::FromIdAsync(input.Id());
                     inPort = inPortOp.get();
@@ -328,7 +328,7 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
                 }
                 else 
                 {
-                    std::wcout << L"INFO: Input '"<<inputName<<L"' not found.\n";
+                    std::wcout << L"INFO: Input device '"<<inputName<<L"' not found.\n";
                     args_error=true;
                 }
             }   
