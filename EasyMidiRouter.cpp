@@ -277,11 +277,18 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
                 int outputIndex = getDeviceIndexFromString(outputs, outputName);
                 if (outputIndex>=0)
                 {
-                    std::wcout << L"INFO: Output device found. ["<<outputIndex<<"] '"<<outputName<<L"'.\n";
                     output=outputs.GetAt(outputIndex);
                     outPortOp = MidiOutPort::FromIdAsync(output.Id());
                     outPort = outPortOp.get();
-                    outputValid = true;
+                    if (!outPort)
+                    {   
+                        std::wcout << L"INFO: Failed to open output device '"<<outputName<<L"'.\n";
+                    }
+                    else
+                    {
+                        std::wcout << L"INFO: Output device opened successfully. ["<<outputIndex<<"] '"<<outputName<<L"'.\n";
+                        outputValid = true;
+                    }
                 }
                 else 
                 {
@@ -298,33 +305,39 @@ int EasyMidiRouterMain(int argc, wchar_t* argv[])
                 int inputIndex = getDeviceIndexFromString(inputs, inputName);
                 if (inputIndex>=0)
                 {
-                    std::wcout << L"INFO: Input device found. ["<<inputIndex<<"] '"<<inputName<<L"'.\n";
                     input=inputs.GetAt(inputIndex);
                     inPortOp = MidiInPort::FromIdAsync(input.Id());
                     inPort = inPortOp.get();
-                    inputValid = true;
-                    inPort.MessageReceived([&](IMidiInPort const&, MidiMessageReceivedEventArgs const& args) 
+                    if (!inPort)
                     {
-                        IBuffer raw = args.Message().RawData();
-                        if (outputValid && outPort)
-                            outPort.SendBuffer(raw);
-                
-                        DataReader reader = DataReader::FromBuffer(raw);
-                        while (reader.UnconsumedBufferLength() > 0) 
+                        std::wcout << L"INFO: Failed to open input device '"<<inputName<<L"'.\n";
+                    }
+                    else
+                    {
+                        std::wcout << L"INFO: Input device opened successfully. ["<<inputIndex<<"] '"<<inputName<<L"'.\n";
+                        inputValid = true;
+                        inPort.MessageReceived([&](IMidiInPort const&, MidiMessageReceivedEventArgs const& args) 
                         {
-                            uint8_t b = reader.ReadByte();
-                            std::wcout << (b<=0xf?L"0":L"") << std::hex << static_cast<int>(b) << L" ";
-
-                            static size_t line_output_count = 0;
-                            line_output_count++;
-                            if (line_output_count>=36)
+                            IBuffer raw = args.Message().RawData();
+                            if (outputValid && outPort)
+                                outPort.SendBuffer(raw);
+                
+                            DataReader reader = DataReader::FromBuffer(raw);
+                            while (reader.UnconsumedBufferLength() > 0) 
                             {
-                                std::wcout << L"\n";
-                                line_output_count=0;
-                            }
-                        }
-                    });
+                                uint8_t b = reader.ReadByte();
+                                std::wcout << (b<=0xf?L"0":L"") << std::hex << static_cast<int>(b) << L" ";
 
+                                static size_t line_output_count = 0;
+                                line_output_count++;
+                                if (line_output_count>=36)
+                                {
+                                    std::wcout << L"\n";
+                                    line_output_count=0;
+                                }
+                            }
+                        });
+                    }
                 }
                 else 
                 {
