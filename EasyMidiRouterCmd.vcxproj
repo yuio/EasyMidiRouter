@@ -81,12 +81,12 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>_output\</OutDir>
-    <IntDir>..\_intermediate\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
+    <IntDir>_intermediate\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)_$(Configuration)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>_output\</OutDir>
-    <IntDir>..\_intermediate\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
+    <IntDir>_intermediate\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
